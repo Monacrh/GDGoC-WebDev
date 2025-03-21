@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { TaskInput } from "../../components/Input";
 import { Button } from "../../components/Button";
+import { db, doc, getDoc, updateDoc } from "../../firebase"; // Import Firestore functions
 
 export const EditTodoList = () => {
   const navigate = useNavigate();
@@ -13,18 +14,22 @@ export const EditTodoList = () => {
   });
 
   useEffect(() => {
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-    const existingTask = tasks.find(t => t.id === Number(id)); // Convert to number
-    
-    if (existingTask) {
-      setTask({
-        heading: existingTask.heading,
-        description: existingTask.description,
-        createdAt: existingTask.createdAt
-      });
-    } else {
-      navigate("/", { replace: true });
-    }
+    const fetchTask = async () => {
+      try {
+        const taskRef = doc(db, "tasks", id); // Reference to Firestore document
+        const taskSnap = await getDoc(taskRef); // Get the task document
+
+        if (taskSnap.exists()) {
+          setTask(taskSnap.data()); // Set task data from Firestore
+        } else {
+          navigate("/", { replace: true }); // Redirect if task doesn't exist
+        }
+      } catch (error) {
+        console.error("Error fetching task:", error);
+      }
+    };
+
+    fetchTask();
   }, [id, navigate]);
 
   const handleInputChange = (e) => {
@@ -35,21 +40,21 @@ export const EditTodoList = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
-    
-    const updatedTasks = tasks.map(t => 
-      t.id === Number(id) ? { 
-        ...t,
+    try {
+      const taskRef = doc(db, "tasks", id); // Reference to Firestore document
+      await updateDoc(taskRef, {
         heading: task.heading,
         description: task.description,
-      } : t
-    );
+        updatedAt: new Date(),
+      });
 
-    localStorage.setItem("tasks", JSON.stringify(updatedTasks));
-    navigate("/");
+      navigate("/"); // Redirect to the todo list
+    } catch (error) {
+      console.error("Error updating task:", error);
+    }
   };
 
   const isFormValid =

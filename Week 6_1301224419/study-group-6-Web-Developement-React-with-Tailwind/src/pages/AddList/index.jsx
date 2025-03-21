@@ -2,10 +2,10 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { TaskInput } from "../../components/Input";
 import { Button } from "../../components/Button";
+import { db, collection, addDoc } from "../../firebase";
 
 export const AddTodoList = () => {
   const navigate = useNavigate();
-
   const [task, setTask] = useState({
     heading: "",
     description: "",
@@ -19,28 +19,22 @@ export const AddTodoList = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    // get "tasks" dari local storage
-    const tasks = JSON.parse(localStorage.getItem("tasks")) || [];
+    try {
+      // Add task to Firestore
+      await addDoc(collection(db, "tasks"), {
+        heading: task.heading,
+        description: task.description,
+        createdAt: new Date(),
+      });
 
-    // task baru
-    const newTask = {
-      id: Date.now(),
-      heading: task.heading,
-      description: task.description,
-      createdAt: Date.now(),
-    };
-
-    // Update task dengan array
-    const updatedTasks = [...tasks, newTask];
-
-    // save update
-    localStorage.setItem("tasks", JSON.stringify(updatedTasks));
-
-    // navigate ke todolist
-    navigate("/");
+      // Navigate to the todo list page after adding the task
+      navigate("/");
+    } catch (error) {
+      console.error("Error adding task: ", error);
+    }
   };
 
   const isFormValid =
